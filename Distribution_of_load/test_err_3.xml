@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<network>
+  <processors>
+    <processor>100</processor>
+    <processor>100</processor>
+  </processors>
+  
+  <programs>
+    <program>10</program>
+    <program>10</program>
+    <program>5</program>
+  	
+    <links>
+      <link>0</link>
+  	 <link>100</link>
+  	 <link>500</link>
+    </links>
+  </programs>
+</network>
