@@ -1,0 +1,9 @@
+class C:
+  num = Num()
+
+print(C().num)
+print(C().num)
+k,m = C(),C()
+k.num = 1
+k.num = -m.num
+print(k.num+m.num)

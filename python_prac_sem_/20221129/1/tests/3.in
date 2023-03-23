@@ -1,0 +1,17 @@
+class C(metaclass=dump):
+    def __init__(self, val, yt=3):
+        self.val = val
+        self.yt = yt
+
+
+    def kiz(self, other, another, this=2, those=None):
+        return self.val + other + (another or self.val) + self.yt + this + (those or this)
+
+c = C(10,17)
+print(c.kiz(9,10,this=890))
+print(c.kiz(9,10))
+
+d = C(89)
+print(d.kiz(1,2,3,4))
+print(d.kiz(other = 1, another = 2, this = 3, those = False))
+

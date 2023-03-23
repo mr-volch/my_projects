@@ -1,0 +1,28 @@
+class C(metaclass=check):
+    A: tuple[str]
+    B: list[float]
+    C: bool = True
+    D: float
+    E: str = "ABC"
+
+c = C()
+print(c.check_annotations())
+c.A = "ZZ"
+print(c.check_annotations())
+c.A = ("a","b")
+print(c.check_annotations())
+c.B = [1.56,2.43]
+print(c.check_annotations())
+c.C=False
+print(c.check_annotations())
+c.D = 'abc'
+print(c.check_annotations())
+c.D = 1.2    
+print(c.check_annotations())
+c.E = 789
+print(c.check_annotations())
+c.E = 'abc'
+print(c.check_annotations())
+c.D = 3.2
+c.C = 900
+print(c.check_annotations())

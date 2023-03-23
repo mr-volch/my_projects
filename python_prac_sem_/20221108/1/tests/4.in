@@ -1,0 +1,6 @@
+d = DivStr("LacrimosaDiesIlla")
+e = DivStr("CumResurgetCreatura")
+print(list(zip(list(d//2),(e//2))))
+print('a', DivStr(), 'b')
+print(d%2)
+print(e%5)

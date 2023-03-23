@@ -1,0 +1,5 @@
+b = DivStr("GeberoPerandoMerkatoLehanto")
+print(list(b//2))
+print(b%13)
+print(b%18)
+print((list(b//3)))

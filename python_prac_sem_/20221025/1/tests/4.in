@@ -1,0 +1,1 @@
+print(*enumerate(fib(25,40)))

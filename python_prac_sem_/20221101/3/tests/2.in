@@ -1,0 +1,10 @@
+f, g, h = Grange(3, 3, 729), Grange(3, 9, 2187), Grange(9, 9, 2187)
+o, e = Grange(1, 1, 1), Grange(27, 3, 9)
+print(f"{f=}, {o=}, {h=}")
+print(f"{list(o)}({not(not(o))}), {list(g)}({not(g)})")
+print(f"{len(f)=}, {len(o)=}, {len(e)=}")
+print(f"{len(list(f))=}, {len(tuple(g))=}, {len(list(o))=}")
+print(f"{f[421]=}, {h[244]=}")
+a, b = f[3:532525], h[3:53252:3]
+print(f"{a=}, {a[1]=}")
+print(f"{b=}, {b[1]=}, {tuple(b)=}") 

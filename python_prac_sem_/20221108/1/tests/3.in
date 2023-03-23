@@ -1,0 +1,4 @@
+c = DivStr("HembatusUmbatusKerunosPertunkos")
+print(type(tuple(c//4)[1]))
+print(tuple(c//4)[1])
+print(tuple(c//4)[1] % 2)

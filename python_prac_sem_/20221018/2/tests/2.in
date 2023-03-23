@@ -1,0 +1,6 @@
+:cos x y cos(x+y)
+cos 1 2
+:decorate s d "--<<{}>>--".format(s+d)
+decorate "ЖЖЖ" "AAA"
+cos 0.5 0.7
+quit "{} ... {}"

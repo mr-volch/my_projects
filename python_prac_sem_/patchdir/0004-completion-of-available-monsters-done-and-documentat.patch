@@ -1,0 +1,735 @@
+From 15afb8a1619d9d407e3fbf46745c5a27595cbefe Mon Sep 17 00:00:00 2001
+From: Aleks <alesha.volchaninov@mail.ru>
+Date: Sat, 18 Mar 2023 16:03:16 +0300
+Subject: [PATCH 4/5] completion of available monsters done and documentation
+ added
+
+---
+ 20230313/1/client.py | 230 +++++++++++++++++++++++++++----------------
+ 20230313/1/server.py | 171 +++++++++++++++++++++-----------
+ 2 files changed, 260 insertions(+), 141 deletions(-)
+
+diff --git a/20230313/1/client.py b/20230313/1/client.py
+index 1713187..a56b3e7 100644
+--- a/20230313/1/client.py
++++ b/20230313/1/client.py
+@@ -2,12 +2,14 @@ import asyncio
+ import cmd
+ import shlex
+ 
+-###функция, делающая кортеж с параметрами для запускаемых команд
+-###аргументы: 1) словарь доступных команд available_cmds в формате {<команда>:<класс>.{<полe>.}<метод>}
+-###           2) сама по себе команда (а именно список слов ее составляющих, полученый из .split())
+-###возвращаем: 1 - плохая команда, 2 - плохие аргументы, кортеж - успех. кортеж для вызова
++
+ def make_args(available_cmds : dict[str, callable], cmd : list[str]):
+-    #Вычленяем нужный метод класса (кортеж вида : (<Название класса(str)>, <метод класса>))
++    """функция, делающая кортеж с параметрами для запускаемых команд
++    аргументы: 1) словарь доступных команд available_cmds в формате {<команда>:<класс>.{<полe>.}<метод>}
++               2) сама по себе команда (а именно список слов ее составляющих, полученый из .split())
++    возвращает: 1 - плохая команда, 2 - плохие аргументы, кортеж - успех. кортеж для вызова"""
++    
++    # Вычленяем нужный метод класса (кортеж вида : (<Название класса(str)>, <метод класса>))
+     try:
+         cur_cmd = available_cmds[cmd[0]]
+     except:
+@@ -16,19 +18,19 @@ def make_args(available_cmds : dict[str, callable], cmd : list[str]):
+     #В зависимости от того, для какого класса делаем, заполняем начальные позиции аргументов
+     match cur_cmd:
+         case "":
+-            #Здесь добавляем сам объект и команду (напр. 'up')
++            #Здесь добавляем только команду (напр. 'up')
+             args = [cmd[0]]
+         case cmd_args:
+-            #здесь добавляем локацию игрока
++            #считаем ожидаемую длину списка аргументов, создаем пустой список
++            #и инициализируем его первый элемент именем текущей команды
+             args_len = 1
+             for i in cmd_args:
+                 args_len += len(cmd_args[i])
+-            
+             args = ['' for i in range(args_len)]
+             args[0] = cmd[0]
+-            #Пробегаемся по всем поданным аргументам
++            #Пробегаемся по всем поданным аргументам и заносим их
++            #в список согласно порядку, установленному в cmd_args
+             n = 0
+-
+             try:
+                 while n < len(cmd):
+                     if cmd[n] in cmd_args.keys():
+@@ -41,28 +43,95 @@ def make_args(available_cmds : dict[str, callable], cmd : list[str]):
+                     for j in range(args_amount):
+                         args[cur_arg[j]] = cmd[n]
+                         n += 1
+-            except:
++            except AttributeError:
+                 return 2
+ 
+-    #возвращаем кортеж с аргументами
++    #возвращаем список с аргументами
+     return args
+ 
++
+ class network_link:
++    """служебный класс для обслуживания "соединения" с сервером
++    хранит объекты reader и writer, ассоциированные с текущим соединением"""
++    
+     reader = None
+     writer = None
+     
+     async def set_link(reader, writer):
+-        print("LINK SET")
++        """служебный метод, для задания объектов reader и writer"""
++        
+         network_link.reader = reader
+         network_link.writer = writer
++
++
++
++    async def caller(fin_args : list[str]):
++        """Все взаимодействие с севрером происходит здесь. fin_args - команда для сервера"""
++
++        # если в fin_args - код ошибки, выводим диагностику 
++        match fin_args:
++            case 1:
++                print("invalid command")
++            case 2:
++                print("invalid arguments")
++            # в случае успешно составленной команды, начинаем взаимодействие с севрером
++            case _:
++                # Удаляем все пустые аргументы из конца команды:
++                # в них сервер подставит знаения по умолчанию
++                while fin_args[-1] == '':
++                    fin_args.pop(-1)
++
++                # Заключаем все слова в команде в ковычки, чтобы сервер
++                # мог распознавать многословные аргументы и шлем команду серверу
++                send_box = ("'" + "' '".join(fin_args) + "'" + '\n').encode()
++                network_link.writer.write(send_box)
++                await network_link.writer.drain()
++
++                # получаем ответ от сервера
++                receive_from_server = asyncio.create_task(network_link.reader.readline())
++                q = await receive_from_server
++
++                # Начинаем анализировать первую строку: согласно протоколу
++                # первый элемент первой строки - кол-во строк, которые сервер прислал (помимо первой)
++                q = q.decode().split()
++                strings_amount = int(q[0])
++
++                # согласно протоколу: если в первой строке есть что-то кроме числа строк,
++                # то в оставшейся части строки указана информация о появлении/исчезновении монстров
++                if len(q) > 1:
++                    # читаем строку с информацией о монстрах и изменяем
++                    # словарь с существующими монстрами класса game_shell
++                    for i in range(1, len(q), 2):
++                        if q[i] == 'add':
++                            game_shell.current_monsters.setdefault(q[i+1], 0)
++                            game_shell.current_monsters[q[i+1]] += 1
++                        if q[i] == 'del':
++                            game_shell.current_monsters[q[i+1]] -= 1
++                            if game_shell.current_monsters[q[i+1]] == 0:
++                                game_shell.current_monsters.pop(q[i+1])
++
++                #Согласно протоколу, все оставшиеся строки в посылке предназначены для вывода пользователю
++                for i in range(strings_amount):
++                    receive_from_server = asyncio.create_task(network_link.reader.readline())
++                    q = await receive_from_server
++                    print(q.decode(), end = '')
+     
+               
+ class game_shell(cmd.Cmd):
+-    available_cmds = {'up': '', 'down': '', 'left': '',
+-                      'right': '', 'attack' : {'attack' : (1,), 'with':(2,)}, 'addmon': {'addmon' : (1,), 'hello' : (2,), 'hp' : (3,), 'coords' : (4,5)}}
++    """Класс - текстовый интерфейс на стороне клиента"""
++
++    # словарь доступных команд. Формат:
++    # команда: {название позиционного аргумента : (индексы на которых располагаются значения для данного аргумента)}
++    available_cmds = {'up': '', 'down': '', 'left': '', 'right': '',
++                      'attack' : {'attack' : (1,), 'with':(2,)},
++                      'addmon': {'addmon' : (1,), 'hello' : (2,), 'hp' : (3,), 'coords' : (4,5)}}
++    #переменыее для пролистывания вариантов в completion
+     cur_monster_pos = 0
+     cur_weapon_pos = 0
++    current_monsters = {}
+ 
++    # перегружаем два метода из класса cmd.Cmd, чтобы сделать их
++    # работу совместимой с asyncio. места изменени помечены комментариями
+     async def cmdloop(self, intro=None):
+         """Repeatedly issue a prompt, accept input, parse an initial prefix
+         off the received input, and dispatch to action methods, passing them
+@@ -102,6 +171,7 @@ class game_shell(cmd.Cmd):
+                         else:
+                             line = line.rstrip('\r\n')
+                 line = self.precmd(line)
++                #создаем задание и awaitим его
+                 cur_task = asyncio.create_task(self.onecmd(line))
+                 stop = await cur_task
+                 stop = self.postcmd(stop, line)
+@@ -113,7 +183,8 @@ class game_shell(cmd.Cmd):
+                     readline.set_completer(self.old_completer)
+                 except ImportError:
+                     pass
+-                    
++
++         
+     async def onecmd(self, line):
+         """Interpret the argument as though it had been typed in response
+         to the prompt.
+@@ -137,125 +208,102 @@ class game_shell(cmd.Cmd):
+                 func = getattr(self, 'do_' + cmd)
+             except AttributeError:
+                 return self.default(line)
++            #место вызова функции do_<cmd>. Здесь на нее ссылается func
++            #создаем задание и awaitим его
+             cur_task = asyncio.create_task(func(arg))
+             res = await cur_task
+             return res
+ 
+-    async def complete(self, text, state):
+-        """Return the next possible completion for 'text'.
+-        If a command has not been entered, then complete against command list.
+-        Otherwise try to call complete_<command> to get list of completions.
+-        """
+-        if state == 0:
+-            import readline
+-            origline = readline.get_line_buffer()
+-            line = origline.lstrip()
+-            stripped = len(origline) - len(line)
+-            begidx = readline.get_begidx() - stripped
+-            endidx = readline.get_endidx() - stripped
+-            if begidx>0:
+-                cmd, args, foo = self.parseline(line)
+-                if cmd == '':
+-                    compfunc = self.completedefault
+-                else:
+-                    try:
+-                        compfunc = getattr(self, 'complete_' + cmd)
+-                    except AttributeError:
+-                        compfunc = self.completedefault
+-            else:
+-                compfunc = self.completenames
+-            self.completion_matches = await compfunc(text, line, begidx, endidx)
+-        try:
+-            return self.completion_matches[state]
+-        except IndexError:
+-            return None
+-
+-
+-    async def caller(fin_args):
+-        match fin_args:
+-            case 1:
+-                print("invalid command")
+-            case 2:
+-                print("invalid arguments")
+-            case _:
+-                while fin_args[-1] == '':
+-                    fin_args.pop(-1)
+-                send_box = ("'" + "' '".join(fin_args) + "'" + '\n').encode()
+-                network_link.writer.write(send_box)
+-                await network_link.writer.drain()
+-                receive_from_server = asyncio.create_task(network_link.reader.readline())
+-                q = await receive_from_server
+-                strings_amount = int(q.decode())
+-                for i in range(strings_amount):
+-                    receive_from_server = asyncio.create_task(network_link.reader.readline())
+-                    q = await receive_from_server
+-                    print(q.decode(), end = '')
+-
+ 
++    # Обработка команд передвижения пользователя:
++    # заполняем команду в формате move <direction>
++    # и передаем её функции, отвечающей за взаимод. с сервером    
+     async def do_up(self, args):
++        """обработка команды up"""
++        
+         cur_args = shlex.split(args)
+         cur_args.insert(0, 'up')
+         fin_args = make_args(game_shell.available_cmds, cur_args)
+         fin_args.insert(0, "move")
+-        await game_shell.caller(fin_args)
++        await network_link.caller(fin_args)
++
+ 
+     async def do_down(self, args):
++        """обработка команды down"""
++        
+         cur_args = shlex.split(args)
+         cur_args.insert(0, 'down')
+         fin_args = make_args(game_shell.available_cmds, cur_args)
+         fin_args.insert(0, "move")
+-        await game_shell.caller(fin_args)
++        await network_link.caller(fin_args)
++
+         
+     async def do_right(self, args):
++        """обработка команды right"""
++        
+         cur_args = shlex.split(args)
+         cur_args.insert(0, 'right')
+         fin_args = make_args(game_shell.available_cmds, cur_args)
+         fin_args.insert(0, "move")
+-        await game_shell.caller(fin_args)
++        await network_link.caller(fin_args)
++
+ 
+     async def do_left(self, args):
++        """обработка команды left"""
++        
+         cur_args = shlex.split(args)
+         cur_args.insert(0, 'left')
+         fin_args = make_args(game_shell.available_cmds, cur_args)
+         fin_args.insert(0, "move")
+-        await game_shell.caller(fin_args)
++        await network_link.caller(fin_args)
++
+ 
+     async def do_attack(self, args):
++        """обработка команды attack"""
++
++        #обнуляем счетчики для completion
+         game_shell.cur_weapon_pos = 0
+         game_shell.cur_monster_pos = 0
+-        cur_args = shlex.split(args)
+         
++        cur_args = shlex.split(args)       
+         if '-h' in cur_args or '--help' in cur_args:
+-            self.do_help('addmon')
++            self.do_help('attack')
+         else:
+             cur_args.insert(0, 'attack')
+             fin_args = make_args(game_shell.available_cmds, cur_args)
+-            await game_shell.caller(fin_args)
++            await network_link.caller(fin_args)
++
+ 
+     def help_attack(self, args):
++        """help message для команды attack"""
++        
+         print("""format: attack <monster_name >with <weapon_name>
+     attack monster with name <monster_name> with weapon <weapon_name>, if rhere is a monster on your current position""")
+ 
+-    async def complete_attack(self, text, line, begidx, endidx):
+-        network_link.writer.write("complete")
+-        await network_link.writer.drain()
+-        receive_from_server = asyncio.create_task(network_link.reader.readline())
+-        q = await receive_from_server
+-        target_attack = [q.decode().split()]
++
++    def complete_attack(self, text, line, begidx, endidx):
++        """автодополнение в режиме "пролистывания" для команды attack"""
++
++        # заводим списки с возможными дополениями
++        target_attack = list(game_shell.current_monsters.keys())
+         target_with = ["sword", "spear", "axe"]
+ 
+         line = line.split()
+-        print(line)
++
++        # циклично по длине списка выводим его элементы в completions
+         if line[-1] in target_with or line[-1] == 'with':
+-                completions = [target_with[game_shell.cur_weapon_pos]]
+-                game_shell.cur_weapon_pos = ((game_shell.cur_weapon_pos + 1) % len(target_with))
++            completions = [target_with[game_shell.cur_weapon_pos]]
++            game_shell.cur_weapon_pos = ((game_shell.cur_weapon_pos + 1) % len(target_with))
+         else:
+             completions = [target_attack[game_shell.cur_monster_pos]]
+             game_shell.cur_monster_pos = ((game_shell.cur_monster_pos + 1) % len(target_attack))
+             
+         return completions
+ 
++
+     async def do_addmon(self, args):
++        """обработка команды addmon"""
++        
+         cur_args = shlex.split(args)
+ 
+         if '-h' in cur_args or '--help' in cur_args:
+@@ -263,9 +311,12 @@ class game_shell(cmd.Cmd):
+         else:
+             cur_args.insert(0, 'addmon')
+             fin_args = make_args(game_shell.available_cmds, cur_args)
+-            await game_shell.caller(fin_args)
++            await network_link.caller(fin_args)
++
+ 
+     def help_addmon(self):
++        """help message для команды addmon"""
++        
+         print("""format: addmon <monster_name> hello <hello_string> hp <hitpoints> coords <x> <y>
+     adds a new monster to player`s location
+     param <monster_name>: one of available ascii arts for python-cowsay module
+@@ -273,7 +324,10 @@ class game_shell(cmd.Cmd):
+     param hp: monster`s hit points
+     param coords: coordinates of exect place on location for monster""")
+ 
++
+     def complete_addmon(self, text, line, begidx, endidx):
++        """автодополнение для команды addmon в режиме вывода всех предложений для completion"""
++        
+         target_addmon = ["-h", "--help", "<monster name>"]
+         target_cows= ["hello", "hp", "coords"]
+         target_coords = ["0 0", "1 1", "2 2"]
+@@ -296,13 +350,17 @@ class game_shell(cmd.Cmd):
+         return completions
+ 
+ 
+-#Запуск игры
+ async def game_loop():
+-    print("<<< Welcome to Python-MUD 0.1 >>>")
++    """Запуск игры"""
++    
++    print("<<< Welcome to Python-MUD 0.2 >>>")
++    # устанавливаем соединение
+     reader, writer = await asyncio.open_connection('0.0.0.0', 1337)
+     task_link = asyncio.create_task(network_link.set_link(reader, writer))
+     await task_link
++    # запускаем TUI
+     task_game = asyncio.create_task(game_shell().cmdloop())
+     await task_game
+-        
++
++   
+ asyncio.run(game_loop())
+diff --git a/20230313/1/server.py b/20230313/1/server.py
+index afda9b2..6e16600 100644
+--- a/20230313/1/server.py
++++ b/20230313/1/server.py
+@@ -1,11 +1,13 @@
+ import cowsay
+ import asyncio
+-from typing import *
+ import readline
+ import shlex
+ import cmd
+ from io import StringIO
++from typing import *
++
+ 
++# кастомный ascii арт
+ jgsbat = cowsay.read_dot_cow(StringIO("""
+ $the_cow = <<EOC;
+          $thoughts
+@@ -22,20 +24,27 @@ $the_cow = <<EOC;
+ EOC
+ """))
+ 
+-#Класс монстров
++
+ class Monster:
+-    #инициализируем нового монстра: вносим приветствие и имя
++    """Класс монстров"""
++
+     def __init__(self, hello : str, name : str, hp : int):
++        """инициализируем нового монстра: вносим приветствие и имя"""
++        
+         self.hello = hello
+         self.name  = name
+         self.hp = hp
+ 
++
+     def get_name(self) -> str:
++        """getter имени монстра"""
+         return self.name
+ 
+-    #функция, реализующая битву с монстром. Ничего не возвращает
++
+     def greetings(self):
+-        #Выводим монстра с приветствием
++        """метод, реализующая встречу с монстром.
++        Возвращает приветствие, оформленное модулем cowsay"""
++
+         if self.name == 'jgsbat':
+             return cowsay.cowsay(self.hello, cowfile = jgsbat)
+         
+@@ -43,6 +52,10 @@ class Monster:
+ 
+ 
+     def battle(self, damage: int) -> tuple[int]:
++        """метод, реализующий битву с монстром.
++        Примает: наносимый урон
++        Возвращает: кортеж вида: (остаток жизней, нанесенный урон, имя)"""
++        
+         prev_hp = self.hp
+         self.hp -= damage
+         if self.hp <= 0:
+@@ -51,71 +64,90 @@ class Monster:
+             return (self.hp, damage, self.name)
+ 
+ 
+-#Класс локаций(карт)
+ class Location:
+-    #иницализируем новую локацию: задаем размеры и заводим пустой словарь монстров
++    """Класс локаций(карт)"""
++    
+     def __init__(self, size_x : int = 10, size_y : int = 10):
++        """иницализируем новую локацию: задаем размеры и заводим пустой словарь монстров"""
++        
+         self.size_x = size_x
+         self.size_y = size_y
+-        #формат словаря: ключи - кортежи с координатами монстров (x,y),
+-        #значения - объекты класса Monster
++        # формат словаря: ключи - кортежи с координатами монстров (x,y),
++        #                 значения - объекты класса Monster
+         self.monsters = {}
+ 
+ 
+-    #служебный метод, возвращающий кортеж с размерами локации
+     def get_size(self):
++        """служебный метод, возвращающий кортеж с размерами локации"""
+         return (self.size_x, self.size_y)
+ 
+ 
+-    #метод, реализующий добавление монстра name на клетку с координатами x,y и
+-    #приветствием hello. Возвращает объект - монстра.
+-    def add_monster(self, name : str, hello : str, hp : int, x : int, y : int) -> Monster:
+-        #Проверяем корректность имени данного монстра. Если некорр. - возвращаем None
++    def add_monster(self, name : str, hello : str, hp : int, x : int, y : int) -> str:
++        """метод, реализующий добавление монстра name на клетку с координатами x,y и
++        приветствием hello. Возвращает строку для клиента."""
++        
++        # Проверяем корректность имени данного монстра. Если некорр. - возвращаем соотв. диагностику
+         if name not in cowsay.list_cows() and name != 'jgsbat' :
+-            return "Cannot add unknown monster"
++            return "1\nCannot add unknown monster"
+         
+-        #проверяем наличие монстра по указанным координатам
++        # проверяем наличие монстра по указанным координатам и получаем имя, если монстр есть
+         flag = (x,y) in self.monsters
++        if flag:
++            prev_name = self.monsters[(x,y)].get_name()
+ 
+-        #Кладем в словарь монстров монстра с данным hello и name по ключу (x,y)
++        # Кладем в словарь монстров монстра с данным hello и name по ключу (x,y)
+         self.monsters[(x,y)] = Monster(hello, name, hp)
+-        #Сообщаем игроку о произошедшем
++        
++        # формируем строку для игрока. Согласно протоколу, в первую строку, помимо
++        # числа строк в сообщении нужно указать появившизся и исчезнувших монстров
+         return_str = f"Added monster {name} to ({x}, {y}) saying {hello}"
+         if flag:
+             return_str += "\nReplaced the old monster"
++            return_str = str(return_str.count('\n') + 1) + ' add ' + name + ' del ' + prev_name + '\n' + return_str
++        else:
++            return_str = str(return_str.count('\n') + 1) + ' add ' + name + '\n' + return_str
+ 
+-        #Возвращаем нового монстра
+         return return_str
+ 
+-    #Метод, реализующий происшествие при встрече игрока с монстром
+-    #Возвращает булевое значение: был ли бой?
++
+     def encounter(self, x : int, y : int) -> bool:
+-        #Если по указанным координатам есть монстр (т.е. кортеж с его координатами есть
+-        #в ключах словаря с монстрами), то запускаем битву с ним
++        """Метод, реализующий происшествие при встрече игрока с монстром
++        Возвращает сообщение для клиента"""
++        
++        # Если по указанным координатам есть монстр, то запускаем приветсвие
+         if (x,y) in self.monsters:
+             return self.monsters[(x,y)].greetings()
+         return ''
+ 
+-    def encounter_attack(self, x: int, y: int, name: str, damage : int) -> Monster:
++
++    def encounter_attack(self, x: int, y: int, name: str, damage : int) -> str:
++        """Метод, реализующий атаку игрока на монстра"""
++        
+         if (x,y) not in self.monsters:
+-            return "No monster here"
++            return "1\nNo monster here"
+             
+         elif self.monsters[(x,y)].get_name() != name:
+-                return f"No monster {name} here"
++                return f"1\nNo monster {name} here"
+ 
++        # если указанный монстр находится в текущей клетке, то запускам битву
+         else:
+             res = self.monsters[(x,y)].battle(damage)
+             return_str = f"Attacked {res[2]}, damage {res[1]} hp\n"
+             
+             if res[0] == 0:
+                 return_str += f"{res[2]} died"
++                # согласно протоколу, мы должны сообщить, что монстра больше нет
++                return_str =  str(return_str.count('\n') + 1) + ' del ' + name + '\n' + return_str
+                 self.monsters.pop((x,y))
+             else:
+                 return_str += f"{res[2]} now has {res[0]} hp"
+-
++                return_str = return_str = str(return_str.count('\n') + 1) + '\n' + return_str
+             return return_str
+ 
++
+     def get_monsters(self) -> list[str]:
++        """Метод для получения списка доступных монстров"""
++        
+         res = []
+         for coord_set in self.monsters:
+             cur_monster = self.monsters[coord_set]
+@@ -123,20 +155,23 @@ class Location:
+         return res
+                 
+ 
+-#Класс игроков
+ class Player:
+-    #Инициализируем игрока: задаем локацию(Объект класса Location) и координаты точки спавна
++    """Класс игроков"""
+     def __init__(self, x : int = 0, y : int = 0, location : Location = Location()):
++        """Инициализируем игрока: задаем локацию(Объект класса Location) и координаты точки спавна"""
++        
+         self.x = x
+         self.y = y
+         self.location = location
+ 
++
+     #Метод для передвижения игрока. Возвращает кортеж с итоговыми координатами.
+     def move(self, cmd : str) -> Tuple[int, int]:
+-        #Меняем координаты в зависимости от команды с учетом того, что:
+-        # 1) нумерация клеток увеличивается сверху вниз, слева направо
+-        # 2) если игрок переходит границу, он появляется с обратной стороны поля
+-        #    (реализовано при помощи операции % от соответсвющего габарита поля)
++        """Метод для передвижения игрока. Возвращает кортеж с итоговыми координатами.
++        Меняем координаты в зависимости от команды с учетом того, что:
++          1) нумерация клеток увеличивается сверху вниз, слева направо
++          2) если игрок переходит границу, он появляется с обратной стороны поля"""
++        
+         location_sizes = self.location.get_size()
+         match cmd:
+             case 'up':
+@@ -148,76 +183,99 @@ class Player:
+             case 'right':
+                 self.x = (self.x + 1) % location_sizes[0]
+ 
+-        #Сообщаем игроку о произошедшем и запускаем обработчик происшествия для текущей локации
++        # формируем сообщение для пользователя: куда подвинулся
++        # и приветсвие монстра, если там где он оказался есть монстр
+         return_str = f"Moved to ({self.x}, {self.y})"
+         meeting = self.location.encounter(self.x, self.y)
+         if meeting:
+             return_str += '\n' + meeting
+ 
++        return_str = str(return_str.count('\n') + 1) + '\n' + return_str
+         return return_str
+ 
++
+     def init_monster(self, name : str, hello : str, hp : int, x : int, y : int) -> Monster:
++        """Метод для запуска процесса добавления нового монстра на текущую локацию игрока"""
++        
+         return self.location.add_monster(name, hello, hp, x, y)
+ 
++
+     def attack(self, name:str, weapon : str = 'sword'):
+-        weapons = {'sword': 10, 'spear': 15, 'axe': 20}
+-        
++        """Метод для запуска процесса битвы с монстром"""
++
++        weapons = {'sword': 10, 'spear': 15, 'axe': 20}  
+         if weapon not in weapons:
+-            return "Unkown weapon"
++            return "1\nUnkown weapon"
+         else:
+             damage = weapons[weapon]
+             return self.location.encounter_attack(self.x, self.y, name, damage)
+ 
++    
+     def available_monsters(self) -> list[str]:
++        """Метод для получения списка достпных монстров"""
+         return self.location.get_monsters()
+ 
+ 
++# серверная часть
+ 
++# словарь в формате {клиент}: {очередь запросов}
+ clients = {}
+ 
+ 
+ async def MUD(reader, writer):
++    """Функция, реализуящая функциональности сервера"""
++
++    # словарь доступных команд и соотв. им методов класса Player
+     available_cmds = {'move': Player.move, 'attack' : Player.attack, 'addmon': Player.init_monster}
++
++    # заводим для клиента объект класса Player и инициализируем очередь запросов
+     player = Player()
+     me = "{}:{}".format(*writer.get_extra_info('peername'))
+     print(me, "Connected")
+     clients[me] = asyncio.Queue()
++
++    # создаем два задания: на чтение и на запись
+     send = asyncio.create_task(reader.readline())
+     receive = asyncio.create_task(clients[me].get())
++    
+     while not reader.at_eof():
++        # обрабатываем выполненные задания с учетом того, что они могут закончиться одновременно
+         done, pending = await asyncio.wait([send, receive], return_when=asyncio.FIRST_COMPLETED)
+         for q in done:
+             if q is send:
++                # принимаем команду от клиента и разбиваем ее на аргументы
+                 send = asyncio.create_task(reader.readline())
+                 cur_rcv = q.result()
+                 parsed_cmd = shlex.split(cur_rcv.decode())
+-                if parsed_cmd[0] == "complete":
+-                    res = " ".join(player.available_monsters())
+-                else:
+-                    arg_ind = 1
+-                    args_len = len(parsed_cmd)
+-                    cur_method = available_cmds[parsed_cmd[0]]
+-                    parsed_cmd[0] = player
+-                    cur_annotations = cur_method.__annotations__
++
++                # приводим все аргументы к соотв. типу из аннотаций и
++                # аргумент - название команды на объект класса Player
++                arg_ind = 1
++                args_len = len(parsed_cmd)
++                cur_method = available_cmds[parsed_cmd[0]]
++                parsed_cmd[0] = player
++                cur_annotations = cur_method.__annotations__
+                 
+-                    for i in cur_annotations:
+-                        if arg_ind == args_len:
+-                            break
+-                        if parsed_cmd[arg_ind]:
+-                            parsed_cmd[arg_ind] = (cur_annotations[i](parsed_cmd[arg_ind]))
+-                            arg_ind += 1
+-
+-                    res = cur_method.__call__(*parsed_cmd)
+-                    res = str(res.count('\n') + 1) + '\n' + res
++                for i in cur_annotations:
++                    if arg_ind == args_len:
++                        break
++                    if parsed_cmd[arg_ind]:
++                        parsed_cmd[arg_ind] = (cur_annotations[i](parsed_cmd[arg_ind]))
++                        arg_ind += 1
++
++                # Вызываем нужный метод с сформированным списком аргументов
++                # кладем результат в очередь
++                res = cur_method.__call__(*parsed_cmd)
+                 await clients[me].put(res)
+                
+-            
+             elif q is receive:
++                # достаем результат из очереди и посылаем его клиенту
+                 receive = asyncio.create_task(clients[me].get())
+                 cur_rcv = q.result()
+                 writer.write((f"{cur_rcv}\n").encode())
+                 await writer.drain()
+ 
++    # закрываем соединение
+     send.cancel()
+     receive.cancel()
+     print(me, "DONE")
+@@ -225,7 +283,10 @@ async def MUD(reader, writer):
+     writer.close()
+     await writer.wait_closed()
+ 
++
+ async def main():
++    """Запуск сервера"""
++    
+     server = await asyncio.start_server(MUD, '0.0.0.0', 1337)
+     async with server:
+         await server.serve_forever()
+-- 
+2.34.1
+

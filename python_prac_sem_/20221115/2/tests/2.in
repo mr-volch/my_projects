@@ -1,0 +1,13 @@
+class C:
+  num = Num()
+
+print(C().num)
+a = C()
+a.num = 5
+d = C()
+d.num = 11
+print(d.num+a.num)
+a.num = ('cur','cur')
+print(a.num+d.num)
+d.num = range(1, 1, 3)
+print(d.num, a.num)

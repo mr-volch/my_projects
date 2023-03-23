@@ -1,0 +1,12 @@
+a = Grange(10,10,1000000000000000000000000000000)
+print(a)
+print(tuple(a))
+print(len(a))
+print(a[0], a[22])
+b = a[100:10000]
+c = a[100:10000:100]
+d = Grange(10,1,2)
+print(list(b), list(c), list(d))
+print(b,c,d)
+print(not(d), not(b))
+print(len(b), len(c))

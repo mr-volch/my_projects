@@ -1,0 +1,8 @@
+:root x y z j sqrt((x+y+z+j)**2)
+root 3 1 2 4
+:isalpha s d a i (a+s+d+i).isalpha()
+:none a print(a)
+isalpha "ЖЖЖ" "AAAА" "С" "2"
+isalpha "s" "d" "a" "i"
+none "l"
+quit "{} <first - second> {}"

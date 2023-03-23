@@ -1,0 +1,25 @@
+class C(metaclass=check):
+    A: list[str]
+    B: list[int]
+    C: int = 5
+    D: float = 1.25
+
+c = C()
+print(c.check_annotations())
+c.A = "ZZ"
+print(c.check_annotations())
+c.A = [100500, 42, 0]
+print(c.check_annotations())
+c.B = type("Boo",(str,),{})(42)
+print(c.check_annotations())
+c.B=[100,300]
+print(c.check_annotations())
+c.A = ["FALSE"]
+print(c.check_annotations())
+c.C = 789
+print(c.check_annotations())
+c.C = 'abc'
+print(c.check_annotations())
+c.D = 3.2
+c.C = 900
+print(c.check_annotations())

@@ -1,0 +1,11 @@
+f, g, h = Grange(2, 2, 12), Grange(5, 5, 15625), Grange(1, 10, 100000)
+print(f"{f=}, {g=}, {h=}")
+print(f"{len(f)=}, {len(g)=}, {len(h)=}")
+print(f"{len(list(f))=}, {len(tuple(g))=}, {len(list(h))=}")
+print(f"{f[421]=}, {h[244]=}")
+a, b = f[5:532525], h[1:53252:9]
+print(f"{a=}, {a[2]=}")
+print(f"{b=}, {b[2]=}, {list(b)=}")
+o = Grange(1, 800, 799)
+print(list(o), not(not(o)))
+print(o[3])

@@ -1,0 +1,451 @@
+From f63e9b61c53ac7e2707cee7db3360af72ee5d202 Mon Sep 17 00:00:00 2001
+From: Aleks <alesha.volchaninov@mail.ru>
+Date: Fri, 17 Mar 2023 19:37:47 +0300
+Subject: [PATCH 1/5] client side done, wxcept of default cases
+
+---
+ 20230313/1/__pycache__/server.cpython-310.pyc | Bin 0 -> 1108 bytes
+ 20230313/1/client.py                          | 259 ++++++++++++++++++
+ 20230313/1/prog.py                            |   2 +
+ 20230313/1/server.py                          | 128 +++++++++
+ 4 files changed, 389 insertions(+)
+ create mode 100644 20230313/1/__pycache__/server.cpython-310.pyc
+ create mode 100644 20230313/1/client.py
+ create mode 100644 20230313/1/server.py
+
+diff --git a/20230313/1/__pycache__/server.cpython-310.pyc b/20230313/1/__pycache__/server.cpython-310.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..b98a6c07a9d7aef11b40041bfcd81353fe05adce
+GIT binary patch
+literal 1108
+zcmZ8f&2AGh5VpPE%^wY=t%^Vh?U6_*n>JiPQH2Btxb#3J5EUp|t*6Ph$vW8Ezi1<+
+z3gRJJRZ5OL2XEmkr@jK0GTwxMur=fH%<RmpzfZ2LlnJiKpEkrLBjl&O{JR{yyhPDY
+zPzfSvkL(k{g!7f`Q^AFcCj&BdfKAAZQq0&RHSY$q$!>%dm&--V$`2GhMs-0mGR6EE
+zeT$XfkP*w+l+MV=$>@{`Hlrh+I>O1ED<*ixuh=!8U<dTM)_2Y94Rd*hxw+-e$h=mb
+z<t^ggjO5Y6->4usWnuS5;2fqn08mNThhga*L=c~V@Q0p%pkyD<JxIh0f4K3gCpGwK
+z7yL*j2}EfulUmVm1)(sWfJh23)efX>I7?O7j*|mv+<}Ud)VQZAPQkcBg>hos$d)pd
+z(=blkxh-n0@oXVb#>;b+;UY{!Q|N=%VFwHkg;3v#x`z}0Y6V@{hu}o^qHfS^9~~<l
+z49*8CJZfv`2f3kOAcO73cC*pkY6e?@26Y0eJ~%g(ZkUK3v?1zBi?7~9#m1|&NXvAC
+zRau!<X^|D_8dd8UicprzLRvz}Vf=>11x?A6rc6+T%vnH5gfn&K^vK8|e@!L`^N6Od
+z@G^Qu7SNGr3%D-V5g;-}p#H%30V%<8PZkxCSP0qHBCcDf2)NxJQ5Ikh3ypfd<LAh;
+zA$#gabU8NuAle*7TX}@)0$YAA;ZT-C$h!%BkHx;Qyd2%FG2`e|nF>OxWprc-f<9Jn
+z7;f)55_7eN)l8|?fdtM5YR5jOwyoIsAsOE9Bj)v1Pex%+@6?xB!^$2a5+@yBCVs78
+z3ZXtvqF9<cIt^8dKw7+V01Q8r$eV&~i^Hgb?YELAv=5{L%)`mN`4`5uOws?3$L$z)
+zP;C_(bL!FZ?WR+uRklj&x5`I%jjIQE<V|yjany10PbtejmH%$B)tBP92RrtSbrDsO
+KAZPBbmVX1Q*$1Zp
+
+literal 0
+HcmV?d00001
+
+diff --git a/20230313/1/client.py b/20230313/1/client.py
+new file mode 100644
+index 0000000..557375b
+--- /dev/null
++++ b/20230313/1/client.py
+@@ -0,0 +1,259 @@
++import asyncio
++import cmd
++import shlex
++
++###функция, делающая кортеж с параметрами для запускаемых команд
++###аргументы: 1) словарь доступных команд available_cmds в формате {<команда>:<класс>.{<полe>.}<метод>}
++###           2) сама по себе команда (а именно список слов ее составляющих, полученый из .split())
++###возвращаем: 1 - плохая команда, 2 - плохие аргументы, кортеж - успех. кортеж для вызова
++def make_args(available_cmds : dict[str, callable], cmd : list[str]):
++    #Вычленяем нужный метод класса (кортеж вида : (<Название класса(str)>, <метод класса>))
++    try:
++        cur_cmd = available_cmds[cmd[0]]
++    except:
++        return 1
++
++    #В зависимости от того, для какого класса делаем, заполняем начальные позиции аргументов
++    match cur_cmd:
++        case "":
++            #Здесь добавляем сам объект и команду (напр. 'up')
++            args = [cmd[0]]
++        case cmd_args:
++            #здесь добавляем локацию игрока
++            args_len = 1
++            for i in cmd_args:
++                args_len += len(cmd_args[i])
++            
++            args = [None for i in range(args_len)]
++            args[0] = cmd[0]
++            #Пробегаемся по всем поданным аргументам
++            n = 0
++
++            try:
++                while n < len(cmd):
++                    if cmd[n] in cmd_args.keys():
++                        args_amount = len(cmd_args[cmd[n]])
++                        cur_arg = cmd_args[cmd[n]]
++                        n += 1
++                    else:
++                        raise AttributeError
++
++                    for j in range(args_amount):
++                        args[cur_arg[j]] = cmd[n]
++                        n += 1
++            except:
++                return 2
++
++    #возвращаем кортеж с аргументами
++    return tuple(args)
++
++class network_link:
++    reader = None
++    writer = None
++    
++    async def set_link(reader, writer):
++        print("LINK SET")
++        network_link.reader = reader
++        network_link.writer = writer
++    
++              
++class game_shell(cmd.Cmd):
++    available_cmds = {'up': '', 'down': '', 'left': '',
++                      'right': '', 'attack' : {'attack' : (1,), 'with':(2,)}, 'addmon': {'addmon' : (1,), 'hello' : (2,), 'hp' : (3,), 'coords' : (4,5)}}
++    cur_monster_pos = 0
++    cur_weapon_pos = 0
++
++    async def cmdloop(self, intro=None):
++        """Repeatedly issue a prompt, accept input, parse an initial prefix
++        off the received input, and dispatch to action methods, passing them
++        the remainder of the line as argument.
++        """
++    
++        self.preloop()
++        if self.use_rawinput and self.completekey:
++            try:
++                import readline
++                self.old_completer = readline.get_completer()
++                readline.set_completer(self.complete)
++                readline.parse_and_bind(self.completekey+": complete")
++            except ImportError:
++                pass
++        try:
++            if intro is not None:
++                self.intro = intro
++            if self.intro:
++                self.stdout.write(str(self.intro)+"\n")
++            stop = None
++            while not stop:
++                if self.cmdqueue:
++                    line = self.cmdqueue.pop(0)
++                else:
++                    if self.use_rawinput:
++                        try:
++                            line = input(self.prompt)
++                        except EOFError:
++                            line = 'EOF'
++                    else:
++                        self.stdout.write(self.prompt)
++                        self.stdout.flush()
++                        line = self.stdin.readline()
++                        if not len(line):
++                            line = 'EOF'
++                        else:
++                            line = line.rstrip('\r\n')
++                line = self.precmd(line)
++                cur_task = asyncio.create_task(self.onecmd(line))
++                stop = await cur_task
++                stop = self.postcmd(stop, line)
++            self.postloop()
++        finally:
++            if self.use_rawinput and self.completekey:
++                try:
++                    import readline
++                    readline.set_completer(self.old_completer)
++                except ImportError:
++                    pass
++                    
++    async def onecmd(self, line):
++        """Interpret the argument as though it had been typed in response
++        to the prompt.
++        This may be overridden, but should not normally need to be;
++        see the precmd() and postcmd() methods for useful execution hooks.
++        The return value is a flag indicating whether interpretation of
++        commands by the interpreter should stop.
++        """
++        cmd, arg, line = self.parseline(line)
++        if not line:
++            return self.emptyline()
++        if cmd is None:
++            return self.default(line)
++        self.lastcmd = line
++        if line == 'EOF' :
++            self.lastcmd = ''
++        if cmd == '':
++            return self.default(line)
++        else:
++            try:
++                func = getattr(self, 'do_' + cmd)
++            except AttributeError:
++                return self.default(line)
++            cur_task = asyncio.create_task(func(arg))
++            res = await cur_task
++            return res
++
++
++    async def caller(fin_args):
++        print("FIN_ARGS", " ".join(fin_args))
++        send_box = (" ".join(fin_args)).encode()
++        network_link.writer.write(send_box)
++        await network_link.writer.drain()
++        receive_from_server = asyncio.create_task(network_link.reader.read())
++        q = await receive_from_server
++        print(q)
++
++
++    async def do_up(self, args):
++        cur_args = shlex.split(args)
++        cur_args.insert(0, 'up')
++        fin_args = make_args(game_shell.available_cmds, cur_args)
++        await game_shell.caller(fin_args)
++
++    async def do_down(self, args):
++        cur_args = shlex.split(args)
++        cur_args.insert(0, 'down')
++        fin_args = make_args(game_shell.available_cmds, cur_args)
++        await game_shell.caller(fin_args)
++        
++    async def do_right(self, args):
++        cur_args = shlex.split(args)
++        cur_args.insert(0, 'right')
++        fin_args = make_args(game_shell.available_cmds, cur_args)
++        await game_shell.caller(fin_args)
++
++    async def do_left(self, args):
++        cur_args = shlex.split(args)
++        cur_args.insert(0, 'left')
++        fin_args = make_args(game_shell.available_cmds, cur_args)
++        await game_shell.caller(fin_args)
++
++    async def do_attack(self, args):
++        game_shell.cur_weapon_pos = 0
++        game_shell.cur_monster_pos = 0
++        cur_args = shlex.split(args)
++        
++        if '-h' in cur_args or '--help' in cur_args:
++            self.do_help('addmon')
++        else:
++            cur_args.insert(0, 'attack')
++            fin_args = make_args(game_shell.available_cmds, cur_args)
++            await game_shell.caller(fin_args)
++
++    def help_attack(self, args):
++        print("""format: attack <monster_name >with <weapon_name>
++    attack monster with name <monster_name> with weapon <weapon_name>, if rhere is a monster on your current position""")
++
++    def complete_attack(self, text, line, begidx, endidx):
++        target_attack = game_shell.player.available_monsters()
++        target_with = ["sword", "spear", "axe"]
++
++        line = line.split()
++        if line[-1] in target_with or line[-1] == 'with':
++                completions = [target_with[game_shell.cur_weapon_pos]]
++                game_shell.cur_weapon_pos = ((game_shell.cur_weapon_pos + 1) % len(target_with))
++        else:
++            completions = [target_attack[game_shell.cur_monster_pos]]
++            game_shell.cur_monster_pos = ((game_shell.cur_monster_pos + 1) % len(target_attack))
++            
++        return completions
++
++    async def do_addmon(self, args):
++        cur_args = shlex.split(args)
++
++        if '-h' in cur_args or '--help' in cur_args:
++            self.do_help('addmon')
++        else:
++            cur_args.insert(0, 'addmon')
++            fin_args = make_args(game_shell.available_cmds, cur_args)
++            await game_shell.caller(fin_args)
++
++    def help_addmon(self):
++        print("""format: addmon <monster_name> hello <hello_string> hp <hitpoints> coords <x> <y>
++    adds a new monster to player`s location
++    param <monster_name>: one of available ascii arts for python-cowsay module
++    param hello: hello string
++    param hp: monster`s hit points
++    param coords: coordinates of exect place on location for monster""")
++
++    def complete_addmon(self, text, line, begidx, endidx):
++        target_addmon = ["-h", "--help", "<monster name>"]
++        target_cows= ["hello", "hp", "coords"]
++        target_coords = ["0 0", "1 1", "2 2"]
++        target_hp = ["40", "50", "60"]
++        target_hello = ["hello", "'you will be doomed!'", "'there is no way you beat me!'"]
++
++        line = line.split()
++        match line[-1]:
++            case 'addmon':
++                completions = target_addmon
++            case 'coords':
++                completions = target_hello
++            case 'hp':
++                completions = target_hp
++            case 'hello':
++                completions = target_hello
++            case _:
++                completions = target_cows
++
++        return completions
++
++
++#Запуск игры
++async def game_loop():
++    print("<<< Welcome to Python-MUD 0.1 >>>")
++    reader, writer = await asyncio.open_connection('0.0.0.0', 1337)
++    task_link = asyncio.create_task(network_link.set_link(reader, writer))
++    await task_link
++    task_game = asyncio.create_task(game_shell().cmdloop())
++    await task_game
++        
++asyncio.run(game_loop())
+diff --git a/20230313/1/prog.py b/20230313/1/prog.py
+index f1a9c22..9e4d3ff 100644
+--- a/20230313/1/prog.py
++++ b/20230313/1/prog.py
+@@ -348,3 +348,5 @@ class game_shell(cmd.Cmd):
+ if __name__ == '__main__':
+     print("<<< Welcome to Python-MUD 0.1 >>>")
+     game_shell().cmdloop()
++    
++print("GOOD BYE")
+diff --git a/20230313/1/server.py b/20230313/1/server.py
+new file mode 100644
+index 0000000..849a29d
+--- /dev/null
++++ b/20230313/1/server.py
+@@ -0,0 +1,128 @@
++#!/usr/bin/env python3
++import asyncio
++import cowsay
++import shlex
++
++clients = {}
++available_cows = cowsay.list_cows()                
++
++async def chat(reader, writer):
++    usr_queue = asyncio.Queue()
++    name = None
++    send = asyncio.create_task(reader.readline())
++    receive = asyncio.create_task(usr_queue.get())
++    while not reader.at_eof():
++        done, pending = await asyncio.wait([send, receive], return_when=asyncio.FIRST_COMPLETED)
++        for q in done:
++            if q is send:
++                send = asyncio.create_task(reader.readline())
++                cur_rcv = q.result()
++                parsed_cmd = shlex.split(cur_rcv.decode())
++                msg = """Unkown command, list of available commands: \n    who\n    cows\n    login <nickname>
++    say <usr_name> <message>\n    yield <message>\n    quit"""
++                
++                if name != None and len(parsed_cmd) > 0:
++                    match parsed_cmd[0]:
++                        case 'login':
++                            msg = "You are allready logged in, if you want to log in with anither name, type 'quit' firstly \n"
++                            
++                        case 'who':
++                            msg = "Here are names of logged in users: \n"
++                            for client in clients.keys():
++                                msg += (client + '\n')
++                                
++                        case 'cows':
++                            msg = "Here are available nicknames for you: "
++                            for cow in available_cows:
++                                msg += f' {cow}' 
++
++                        case 'say':
++                            try:
++                                target_usr = parsed_cmd[1]
++                                if target_usr not in clients:
++                                    msg = f"There is no client with name {target_usr}\n"
++                                else:
++                                    await clients[target_usr].put(cowsay.cowsay(parsed_cmd[2], name))
++                                    msg = None
++                            except IndexError:
++                                msg = "Wrong command format, it should be: 'say <usr_name> <message>'\n"
++
++                        case 'yield':
++                            try:
++                                for out in clients.values():
++                                    if out is not usr_queue:
++                                        await out.put(cowsay.cowsay(parsed_cmd[1], cow = name))
++                                msg = None
++                            except IndexError:
++                                msg = "Wrong command format, it should be: 'yield <message>'\n"
++
++                        case 'quit':
++                            clients.pop(name)
++                            available_cows.append(name)
++                            break
++
++                else:
++                    if len(parsed_cmd) > 0:
++                        match parsed_cmd[0]:
++                            case 'login':
++                                if parsed_cmd[1] in clients:
++                                    msg = "This nickname is allready taken by another user\n"
++                                elif parsed_cmd[1] not in available_cows:
++                                    msg = "This nickname is not valid, to see available nicknames, type 'cows'"
++                                else:
++                                    clients[parsed_cmd[1]] = usr_queue
++                                    name = parsed_cmd[1]
++                                    available_cows.pop(available_cows.index(parsed_cmd[1]))
++                                    msg = f"hello, {parsed_cmd[1]}"
++
++                            case 'who':
++                                msg = "Here are names of logged in users: \n"
++                                for client in clients.keys():
++                                    msg += (client + '\n')
++                            
++                            case 'cows':
++                                msg = "Here are available nicknames for you: "
++                                for cow in available_cows:
++                                    msg += f' {cow}' 
++
++                            case 'say':
++                                msg = "You can`t send messages until you log in"
++
++                            case 'yield':
++                                msg = "You can`t send messages until you log in"
++
++                            case 'quit':
++                                break
++                if msg:
++                    if name:
++                        await usr_queue.put(cowsay.cowsay(msg, name))
++                    else:
++                        await(usr_queue.put(msg))
++##                for out in clients.values():
++##                    if out is not usr_queue:
++##                        await out.put(f"NO {me} {q.result().decode().strip()}")
++            elif q is receive:
++                receive = asyncio.create_task(usr_queue.get())
++                cur_rcv = q.result()
++                print(cur_rcv)
++                writer.write((f"{q.result()}\n").encode())
++                await writer.drain()
++
++        else:
++            continue
++        break       
++    send.cancel()
++    receive.cancel()
++    print(name, "DONE")
++    del usr_queue
++    writer.close()
++    await writer.wait_closed()
++
++
++async def main():
++    server = await asyncio.start_server(chat, '0.0.0.0', 1337)
++    async with server:
++        await server.serve_forever()
++
++asyncio.run(main())
++
+-- 
+2.34.1
+

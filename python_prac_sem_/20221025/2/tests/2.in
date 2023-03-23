@@ -1,0 +1,1 @@
+exec("def infinite_seq():\n    num = 0\n    while True:\n        yield num\n        num += 1\nprint(*it.islice(slide(infinite_seq(), 3), 1, 7))")

@@ -1,0 +1,32 @@
+from time import time
+t0 = time()
+alp = Alpha(c=10, z=2, a=42)
+alp.e = 123
+alp.b = 123
+alp.d = 123
+alp.e = 123
+alp.f = 123
+alp.g = 123
+alp.h = 123
+alp.i = 123
+alp.j = 123
+alp.k = 123
+alp.m = 123
+print(alp)
+t01 = time() - t0
+t1 = time()
+alq = AlphaQ(c=10, z=2, a=42)
+alq.e = 123
+alq.b = 123
+alq.d = 123
+alq.e = 123
+alq.f = 123
+alq.g = 123
+alq.h = 123
+alq.i = 123
+alq.j = 123
+alq.k = 123
+alq.m = 123
+print(alq)
+t11 = time() - t1
+print(f"{t11<t01=}")

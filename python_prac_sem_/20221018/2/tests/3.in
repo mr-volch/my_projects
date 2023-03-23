@@ -1,0 +1,6 @@
+:exp x y z cos((x+y)**z)
+exp 3 1 2
+:len s d a len(s+d)-len(a)
+len "ЖЖЖ" "AAAА" "С"
+exp 0.5 1.5 3
+quit "{} !? {}"
