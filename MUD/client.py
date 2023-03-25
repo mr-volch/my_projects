@@ -38,12 +38,12 @@ def make_args(available_cmds : dict[str, callable], cmd : list[str]):
                         cur_arg = cmd_args[cmd[n]]
                         n += 1
                     else:
-                        raise AttributeError
+                        raise IndexError
 
                     for j in range(args_amount):
                         args[cur_arg[j]] = cmd[n]
                         n += 1
-            except AttributeError:
+            except IndexError:
                 return 2
 
     #возвращаем список с аргументами
@@ -129,6 +129,7 @@ class game_shell(cmd.Cmd):
     cur_monster_pos = 0
     cur_weapon_pos = 0
     current_monsters = {}
+    intro = 'Press tab for comand completion'
 
     # перегружаем два метода из класса cmd.Cmd, чтобы сделать их
     # работу совместимой с asyncio. места изменени помечены комментариями
@@ -283,7 +284,6 @@ class game_shell(cmd.Cmd):
 
     def complete_attack(self, text, line, begidx, endidx):
         """автодополнение в режиме "пролистывания" для команды attack"""
-
         # заводим списки с возможными дополениями
         target_attack = list(game_shell.current_monsters.keys())
         target_with = ["sword", "spear", "axe"]
@@ -295,6 +295,8 @@ class game_shell(cmd.Cmd):
             completions = [target_with[game_shell.cur_weapon_pos]]
             game_shell.cur_weapon_pos = ((game_shell.cur_weapon_pos + 1) % len(target_with))
         else:
+            if len(target_attack) == 0:
+                return ['Now there are no monstrers to attack, add them bey "addmon" cmd first', '']
             completions = [target_attack[game_shell.cur_monster_pos]]
             game_shell.cur_monster_pos = ((game_shell.cur_monster_pos + 1) % len(target_attack))
             
@@ -328,7 +330,7 @@ class game_shell(cmd.Cmd):
     def complete_addmon(self, text, line, begidx, endidx):
         """автодополнение для команды addmon в режиме вывода всех предложений для completion"""
         
-        target_addmon = ["-h", "--help", "<monster name>"]
+        target_addmon = ["-h", "--help", "<monster name>", "turtle", "jgsbat", "kitten"]
         target_cows= ["hello", "hp", "coords"]
         target_coords = ["0 0", "1 1", "2 2"]
         target_hp = ["40", "50", "60"]
