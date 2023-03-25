@@ -11,7 +11,7 @@ educational programs
     
     2. shell - реализация модельной командной оболочки,
     с функционалом некоторой части shell в linux-системах.
-    Более подробное ТЗ - см. https://studizba.com/files/show/pdf/37386-1-t-v-rudenko--sbornik-zadach-i.html. Стр. 52-54.
+    Более подробное ТЗ - см. (https://studizba.com/files/show/pdf/37386-1-t-v-rudenko--sbornik-zadach-i.html). Стр. 52-54.
     Язык: с
     
     3. SKiPOD - реализация параллельных программ для подсчета определеннго интеграла
@@ -27,28 +27,28 @@ educational programs
     Язык: python3.
     
     6. cpp_prac - учебные задачи из курса "Системное программирование":
-    https://cmcmsu.info/2course/
+    (https://cmcmsu.info/2course/)
     Язык: с++
     
     7. с_prac - учебные задачи из курса "Операционные системы":
-    https://cmcmsu.info/2course/
+    (https://cmcmsu.info/2course/)
     Язык: с
     
     8. python_prac_lec - учебные задачи из лекционного курса "Язык программирования python":
-    http://uneex.org/LecturesCMC/PythonIntro2022
+    (http://uneex.org/LecturesCMC/PythonIntro2022)
     Язык: python3
     
     9. python_collab_lec - учебные задачи из
     лекционного курса "Совместная разработка приложений на Python":
-    http://uneex.org/LecturesCMC/PythonDevelopment2023
+    (http://uneex.org/LecturesCMC/PythonDevelopment2023)
     Язык: python3
     
     10. python_prac_sem_ - учебные задачи из семинарских курсов "Язык программирования python" и
     "Совместная разработка приложений на Python":
-    http://uneex.org/LecturesCMC/PythonIntro2022/Prac
-    http://uneex.org/LecturesCMC/PythonDevelopment2023/Prac
+    (http://uneex.org/LecturesCMC/PythonIntro2022/Prac)
+    (http://uneex.org/LecturesCMC/PythonDevelopment2023/Prac)
     Язык: python3
     
     11. yandex_algo_3.0 - учебные задачи из интенсива "Тренировки по алгоритмам 3.0" от платформы Young&&Yandex:
-    https://yandex.ru/yaintern/algorithm-training
+    (https://yandex.ru/yaintern/algorithm-training)
     Язык: python3
